@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 const vehicles = ref([])
 const alerts = ref([])
 const loading = ref(true)
@@ -19,7 +19,7 @@ const recentActivity = ref([])
 
 const fetchVehicles = async () => {
   try {
-    const response = await fetch('http://localhost:8080/api/vehicles')
+    const response = await fetch(`${API_BASE_URL}vehicles`)
     const data = await response.json()
     vehicles.value = data
     computeStats()
@@ -33,7 +33,7 @@ const fetchVehicles = async () => {
 
 const fetchAlerts = async () => {
   try {
-    const response = await fetch('http://localhost:8080/api/alerts')
+    const response = await fetch(`${API_BASE_URL}alerts`)
     const data = await response.json()
     alerts.value = data
   } catch (error) {
