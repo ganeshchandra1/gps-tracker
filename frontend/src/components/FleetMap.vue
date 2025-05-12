@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 const map = ref(null)
 const mapContainer = ref(null)
 const markers = ref([])
@@ -29,9 +29,9 @@ const applyFilters = () => {
 
 const fetchVehiclesAndPlot = async () => {
   try {
-    await fetch('http://localhost:8080/api/vehicles/random-update', { method: 'POST' })
+    await fetch(`${API_BASE_URL}vehicles/random-update`, { method: 'POST' })
 
-    const response = await fetch('http://localhost:8080/api/vehicles')
+    const response = await fetch(`${API_BASE_URL}vehicles`)
     const data = await response.json()
     vehicles.value = data
     applyFilters()
