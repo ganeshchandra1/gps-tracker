@@ -69,7 +69,7 @@ func main() {
 	router := gin.Default()
 	allowedOrigins := []string{"http://localhost:5173"}
 	if os.Getenv("ENV") == "production" {
-		allowedOrigins = []string{"https://yourfrontenddomain.com"}
+		allowedOrigins = []string{"https://gps-tracker-nine.vercel.app"}
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
