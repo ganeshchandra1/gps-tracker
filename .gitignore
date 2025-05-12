@@ -1,0 +1,35 @@
+# ===== Global ignores =====
+.DS_Store
+Thumbs.db
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env
+frontend/.vite/
+
+# ===== Go / Backend =====
+backend/bin/
+backend/vendor/
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+backend/*.test
+backend/.env
+backend/go.work
+backend/go.work.sum
+
+# ===== Logs & IDE =====
+*.log
+*.swp
+*.swo
+*.tmp
+.vscode/
+.idea/
+._*
+*.out
+ehthumbs.db
+Desktop.ini
