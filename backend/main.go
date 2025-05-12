@@ -3,7 +3,6 @@ package main
 import (
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -67,12 +66,8 @@ func init() {
 
 func main() {
 	router := gin.Default()
-	allowedOrigins := []string{"http://localhost:5173"}
-	if os.Getenv("ENV") == "production" {
-		allowedOrigins = []string{"https://gps-tracker-nine.vercel.app"}
-	}
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
+		AllowOrigins:     []string{"http://localhost:5173", "https://gps-tracker-nine.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
 		AllowCredentials: true,
