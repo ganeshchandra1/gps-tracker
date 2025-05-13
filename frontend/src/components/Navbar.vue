@@ -1,6 +1,5 @@
 <script setup>
 import { UserCircleIcon } from '@heroicons/vue/24/solid'
-import filters from './Filters.vue'
 </script>
 
 <template>
