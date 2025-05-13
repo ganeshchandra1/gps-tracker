@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 const vehicles = ref([])
 const alerts = ref([])
@@ -81,7 +82,6 @@ onMounted(() => {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
       <!-- Header -->
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-green-400">Fleet Dashboard</h1>
         <div class="flex items-center space-x-4">
           <span class="text-sm text-gray-400">Last Updated: {{ lastUpdated }}</span>
           <button @click="refreshData" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">

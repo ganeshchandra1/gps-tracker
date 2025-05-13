@@ -1,5 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { XMarkIcon } from '@heroicons/vue/24/solid'
+import Dashboard from '@/pages/DashboardPage.vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
@@ -7,16 +9,15 @@ const map = ref(null)
 const mapContainer = ref(null)
 const markers = ref([])
 const routeLayers = ref([])
-
 const vehicles = ref([])
 const filteredVehicles = ref([])
-
 const selectedStatus = ref('All')
 const selectedType = ref('All')
 const showOnlineOnly = ref(false)
 const showVehiclesPanel = ref(false)
+const showDashboardPanel = ref(false)
 const selectedVehicleId = ref(null)
-
+const vehicleRefs = ref({})
 let intervalId = null
 
 const applyFilters = () => {
@@ -26,7 +27,63 @@ const applyFilters = () => {
     (!showOnlineOnly.value || v.isOnline)
   )
 }
+const plotFilteredVehiclesOnMap = () => {
+  // Remove existing markers + routes
+  markers.value.forEach(marker => marker.remove())
+  markers.value = []
+  routeLayers.value.forEach(id => {
+    if (map.value.getLayer(id)) map.value.removeLayer(id)
+    if (map.value.getSource(id)) map.value.removeSource(id)
+  })
+  routeLayers.value = []
 
+  // Add filtered vehicles as markers
+  filteredVehicles.value.forEach(vehicle => {
+    const marker = new mapboxgl.Marker({
+      color: vehicle.status === 'Moving' ? 'green' :
+             vehicle.status === 'Idle' ? 'yellow' : 'red'
+    })
+    .setLngLat([vehicle.longitude, vehicle.latitude])
+    .setPopup(new mapboxgl.Popup().setHTML(
+      `<div class="w-full p-2 bg-white rounded shadow-md text-sm text-black">
+        <div class="font-bold text-lg mb-1">${vehicle.id}</div>
+        <div>Driver: <span class="font-semibold">${vehicle.driverName}</span></div>
+        <div>Status: 
+          <span class="inline-block px-2 py-0.5 text-xs rounded-full 
+            ${vehicle.status === 'Moving' ? 'bg-green-200 text-green-800' : 
+              vehicle.status === 'Idle' ? 'bg-yellow-200 text-yellow-800' : 
+              'bg-red-200 text-red-800'}">
+            ${vehicle.status}
+          </span>
+        </div>
+                  <div class="mt-2 text-center">
+      <button onclick="window.selectVehicleFromMap('${vehicle.id}')"
+              class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs">
+        View Details
+      </button>
+    </div>
+      </div>`
+    ))
+    .addTo(map.value)
+
+    // Add flyTo() on marker click
+    marker.getElement().addEventListener('click', () => {
+      map.value.flyTo({
+        center: [vehicle.longitude, vehicle.latitude],
+        zoom: 16,
+        speed: 1.2,
+        curve: 1.4
+      })
+    })
+
+    markers.value.push(marker)
+  })
+}
+const resetMarkersAndApplyFilters = () => {
+  selectedVehicleId.value = null
+  markers.value.forEach(m => m.getElement().style.transform = 'scale(1)')
+  applyFilters()
+}
 const fetchVehiclesAndPlot = async () => {
   try {
     await fetch(`${API_BASE_URL}vehicles/random-update`, { method: 'POST' })
@@ -35,7 +92,6 @@ const fetchVehiclesAndPlot = async () => {
     const data = await response.json()
     vehicles.value = data
     applyFilters()
-
     markers.value.forEach(marker => marker.remove())
     markers.value = []
     routeLayers.value.forEach(id => {
@@ -43,7 +99,6 @@ const fetchVehiclesAndPlot = async () => {
       if (map.value.getSource(id)) map.value.removeSource(id)
     })
     routeLayers.value = []
-
     filteredVehicles.value.forEach(vehicle => {
       const marker = new mapboxgl.Marker({
         color: vehicle.status === 'Moving' ? 'green' :
@@ -62,6 +117,12 @@ const fetchVehiclesAndPlot = async () => {
           ${vehicle.status}
         </span>
       </div>
+          <div class="mt-2 text-center">
+      <button onclick="window.selectVehicleFromMap('${vehicle.id}')"
+              class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs">
+        View Details
+      </button>
+    </div>
     </div>`
         ))
         .addTo(map.value)
@@ -70,7 +131,7 @@ const fetchVehiclesAndPlot = async () => {
       marker.getElement().addEventListener('click', () => {
         map.value.flyTo({
           center: [vehicle.longitude, vehicle.latitude],
-          zoom: 16,
+          zoom: 8,
           speed: 1.2,
           curve: 1.4
         })
@@ -119,7 +180,10 @@ const expandVehicle = (vehicle) => {
   })
   if (marker) marker.getElement().style.transform = 'scale(1.5)'
 }
-watch([selectedStatus, selectedType, showOnlineOnly], applyFilters)
+watch([selectedStatus, selectedType, showOnlineOnly], () => {
+  applyFilters()
+  plotFilteredVehiclesOnMap()
+})
 onMounted(() => {
   mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FuaTIwOCIsImEiOiJjbWFrN2lkYWgwNTByMnNwdzI4eTF6cjFiIn0.AbTOPiSgdJaLIyjJpw4LcA'
   map.value = new mapboxgl.Map({
@@ -131,6 +195,13 @@ onMounted(() => {
   map.value.resize()
   map.value.addControl(new mapboxgl.NavigationControl(), 'top-right')
   fetchVehiclesAndPlot()
+  window.selectVehicleFromMap = (id) => {
+    showVehiclesPanel.value = true
+    selectedVehicleId.value = id
+    
+  }
+
+  
 })
 onBeforeUnmount(() => {
   clearInterval(intervalId)
@@ -164,33 +235,51 @@ const resetFilters = () => {
         <option>Electric Car</option>
       </select>
     </div>
-
     <div>
       <label class="inline-flex items-center">
         <input type="checkbox" v-model="showOnlineOnly" class="form-checkbox text-green-500" />
         <span class="ml-2 text-sm text-white">Online Only</span>
       </label>
     </div>
-
     <button @click="resetFilters" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
       Reset
     </button>
+    <button @click="showDashboardPanel  = !showDashboardPanel ; selectedVehicleId = null; markers.value.forEach(m => m.getElement().style.transform = 'scale(1)')" 
+            class=" bg-gray-800 text-white px-4 py-3 rounded hover:bg-green-700">
+      Dashboard
+    </button>
 
     <button @click="showVehiclesPanel = !showVehiclesPanel; selectedVehicleId = null; markers.value.forEach(m => m.getElement().style.transform = 'scale(1)')" 
-            class="ml-auto bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            class=" bg-gray-800 text-white px-4 py-3 rounded hover:bg-green-700">
       Vehicles
     </button>
   </div>
 
   <div ref="mapContainer" class="w-full h-[600px] border shadow-xl"></div>
+  <transition name="slide">
+  <div v-if="showDashboardPanel" 
+     class="fixed right-0 top-0 h-full bg-gray-900 shadow-xl z-50 transition-transform duration-300 flex flex-col">
 
+  <!-- Header with close button -->
+  <div class="sticky flex justify-between items-center p-5 bg-gray-800 border-b border-gray-700">
+    <h1 class="text-lg text-green-400 font-bold">Dashboard</h1>
+    <XMarkIcon @click="showDashboardPanel = false"
+    class="h-6 w-6 text-gray-400 hover:text-white cursor-pointer" />
+  </div>
+  <!-- Your Dashboard content -->
+  <div class="flex-1 overflow-y-auto">
+      <Dashboard @close="showDashboardPanel = false" />
+    </div>
+</div>
+  </transition>
   <!-- Vehicles Panel -->
   <transition name="slide">
-    <div v-if="showVehiclesPanel" class="vehicle-panel">
+    <div v-if="showVehiclesPanel" class="vehicle-panel p-5">
       <div class="p-4 flex justify-between items-center bg-gray-800 text-green-400 border-b border-gray-700">
         <h2 class="text-lg font-bold">Vehicles</h2>
         <button @click="showVehiclesPanel = false; selectedVehicleId = null; markers.value.forEach(m => m.getElement().style.transform = 'scale(1)')" 
-                class="text-gray-400 hover:text-white">✖</button>
+                class="text-gray-400 hover:text-white">    <XMarkIcon @click="showVehiclesPanel = false"
+                class="h-6 w-6 text-gray-400 hover:text-white cursor-pointer" /></button>
       </div>
       <ul class="p-4">
         <li v-for="vehicle in vehicles" :key="vehicle.id" 
@@ -217,10 +306,12 @@ const resetFilters = () => {
     <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-400">
       <div class="font-semibold">Type</div><div>{{ vehicle.vehicleType }}</div>
       <div class="font-semibold">Online</div><div>{{ vehicle.isOnline ? 'Yes' : 'No' }}</div>
-      <div class="font-semibold">Lat</div><div>{{ vehicle.latitude.toFixed(5) }}</div>
+      <div class="font-semibold">Speed</div><div>{{ vehicle.latitude.toFixed(5) }}</div>
       <div class="font-semibold">Lng</div><div>{{ vehicle.longitude.toFixed(5) }}</div>
       <div v-if="vehicle.speed" class="font-semibold">Speed</div>
       <div v-if="vehicle.speed">{{ vehicle.speed }} km/h</div>
+      <div v-if="vehicle.fuelLevel" class="font-semibold">Fuel</div>
+      <div v-if="vehicle.fuelLevel">{{ vehicle.fuelLevel }} </div>
     </div>
   </div>
 </li>
@@ -240,7 +331,7 @@ const resetFilters = () => {
 }
 .vehicle-panel {
   position: absolute;
-  top: 64px;
+  top: 0px;
   right: 0;
   width: 300px;
   height: 100%;
